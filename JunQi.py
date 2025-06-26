@@ -470,6 +470,7 @@ class JunqiEnv:
 		self.id_to_type = {0: {}, 1: {}}
 		self._init_game()
 		#assert self.validate_layout(0) and self.validate_layout(1), "非法布局"
+		return self.board
 
 # Step
 	def Tstep(self, player, action0, action1):

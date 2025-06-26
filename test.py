@@ -94,10 +94,11 @@ def test():
 			slection_mask = np.zeros(60, dtype=np.int16)
 			
 			if sssp % 1 == 0:
-				print(env.output)
+				print(env.output())
 				print()
 			sssp += 1
 			
+			done = False
 			for i in range(2):
 				avail_actions = env.get_onehot_available_actions(0, i, 0)
 				state = env.extract_state(i, 0, slection_mask)
@@ -113,7 +114,7 @@ def test():
 					win[i] += 1
 					break
 				
-			if done: # ???
+			if done:
 				sssp += t
 				break
 
