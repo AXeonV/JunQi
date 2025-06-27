@@ -8,18 +8,18 @@ from collections import defaultdict
 
 import random
 class PieceType(IntEnum):
-	MINE = 0      # 地雷
-	FLAG = 1      # 军旗
-	COMMANDER = 2 # 司令
-	GENERAL = 3   # 军长
-	MAJOR_GEN = 4 # 师长
-	BRIGADIER = 5 # 旅长
-	COLONEL = 6   # 团长
-	MAJOR = 7     # 营长
-	BOMB = 8      # 炸弹
-	CAPTAIN = 9   # 连长
+	MINE = 0        # 地雷
+	FLAG = 1        # 军旗
+	COMMANDER = 2   # 司令
+	GENERAL = 3     # 军长
+	MAJOR_GEN = 4   # 师长
+	BRIGADIER = 5   # 旅长
+	COLONEL = 6     # 团长
+	MAJOR = 7       # 营长
+	BOMB = 8        # 炸弹
+	CAPTAIN = 9     # 连长
 	LIEUTENANT = 10 # 排长
-	ENGINEER = 11  # 工兵
+	ENGINEER = 11   # 工兵
 
 class JunqiEnv:
 		
@@ -119,6 +119,7 @@ class JunqiEnv:
 		self.id_to_type = {0: {}, 1: {}}
 		self.curmove = {}
 		self._init_game()
+  
 	def _init_game(self):
 		self.piece_map.clear()
 		for player in [0, 1]:
@@ -323,11 +324,9 @@ class JunqiEnv:
 
 	def _get_deploy_zone(self, player):
 		if player == 0:
-			return [(i,j) for i in range(6) for j in range(5) 
-				   if (i,j) not in self.base_camps]
+			return [(i,j) for i in range(6) for j in range(5) if (i,j) not in self.base_camps]
 		else:
-			return [(i,j) for i in range(6,12) for j in range(5)
-				   if (i,j) not in self.base_camps]
+			return [(i,j) for i in range(6,12) for j in range(5) if (i,j) not in self.base_camps]
 
 	def _place_flag(self, player, deploy_area):
 		_pos = random.randint(1,len(self.flag_positions[player]))
@@ -470,9 +469,8 @@ class JunqiEnv:
 		self.id_to_type = {0: {}, 1: {}}
 		self._init_game()
 		#assert self.validate_layout(0) and self.validate_layout(1), "非法布局"
-		return self.board
 
-# Step
+	# Step
 	def Tstep(self, player, action0, action1):
 		if player == 1:
 			action0 = self.cols * self.rows - 1 - action0
@@ -506,7 +504,7 @@ class JunqiEnv:
 		self._update_board_state(u, from_pos, to_pos, player, piece_type, combat_result)
 		
 		# ========== 3. 计算战略奖励 ==========
-		reward += self._calculate_strategic_reward(to_pos)        
+		reward += self._calculate_strategic_reward(to_pos)
 		# ========== 4. 轮次切换 ==========
 		self.current_player = 1 - self.current_player
 		self.step_count += 1
@@ -525,7 +523,7 @@ class JunqiEnv:
 			'player': self.current_player,
 			'step': self.step_count
 		})
-		#
+		# 消极比赛惩罚
 		if self.step_count - self.last_attack_step > 14:
 			reward -= (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2)
 		return reward, done
@@ -561,7 +559,7 @@ class JunqiEnv:
 		"""战略位置奖励"""
 		add = to_pos[0] - 6
 		if self.current_player == 1:
-			add = 5 - to_pos[0]        
+			add = 5 - to_pos[0]
 		if to_pos in self.base_camps:  # 行营控制
 			return 0.8 + add * 0.3
 		return 0.0 + add * 0.3
@@ -615,9 +613,10 @@ class JunqiEnv:
 
 	def _check_termination(self, player):
 		"""终局条件判断"""
-		# 检查军旗存在
+		# 消极比赛，强制终止
 		if self.step_count - self.last_attack_step > 70:
 			return True
+		# 检查军旗存在
 		flags = False
 		for (p, typ, _) in self.piece_map.values():
 			if typ == PieceType.FLAG and p == player:
@@ -656,7 +655,7 @@ class JunqiEnv:
 		else:
 			self.board[to_pos] = -(u + 1)
 
-# IsLegalMove
+	# IsLegalMove
 	def is_legal_move(self, from_pos, to_pos, player):
 		# 基础检查
 		if not self._basic_check(from_pos, to_pos, player):
@@ -750,7 +749,8 @@ class JunqiEnv:
 		dx = abs(from_pos[0] - to_pos[0])
 		dy = abs(from_pos[1] - to_pos[1])
 		return (dx == 1 and dy == 0) or (dx == 0 and dy == 1)
-# Extract data
+
+	# Extract data
 	def extract_state(self, player, crphase, selection_mask):
 		self.current_player = player
 		"""优化后的状态提取函数"""
@@ -766,12 +766,12 @@ class JunqiEnv:
 		
 		# 转换为适合PyTorch的格式并缓存
 		processed = [
-		state['phase'],                 # 假设是二维数组
-		state['Pri_I'].flatten(),                 # 展平为1D
+		state['phase'],                         # 假设是二维数组
+		state['Pri_I'].flatten(),               # 展平为1D
 		state['Pub_oppo'].flatten(),
 		state['Move'].flatten(),
 		state['selected'].flatten(),
-		state['steps_since_attack'].flatten()      # 标量也会被展平
+		state['steps_since_attack'].flatten()   # 标量也会被展平
 		]
 		return np.concatenate(processed)
 	def _get_pri_tensor(self, player):
@@ -813,6 +813,7 @@ class JunqiEnv:
 						pub[i,j] = mpub[uid]
 			
 		return pub
+
 	def _calculate_pub_distribution(self, opponent):
 		"""计算敌方概率分布"""
 		# 调用外部计算模块
@@ -827,8 +828,7 @@ class JunqiEnv:
 		posflag = -1
 		if self.rphase[opponent] == True:
 			posflag = self.flagnum[opponent]
-		return calculate_distribution(out_e_self, out_e_oppo, 
-									  self.is_moved[opponent], mpri, posflag)
+		return calculate_distribution(out_e_self, out_e_oppo, self.is_moved[opponent], mpri, posflag)
 
 	def _get_compressed_move_tensor(self):
 		"""压缩移动历史张量"""
