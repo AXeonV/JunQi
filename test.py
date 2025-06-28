@@ -94,19 +94,17 @@ def test():
 			slection_mask = np.zeros(60, dtype=np.int16)
 			
 			from wboard import print_state
-     	# if sssp % 2 == 0:
-			if True:
-				board_in = env.output()
-				board_out = []
-				for i in range(12):
-					for j in range(5):
-						if board_in[0][i][j][1] == 1:
-							board_out.append((i, j, (255, 0, 0), board_in[0][i][j][0]))
-						elif board_in[0][i][j][1] == -1:
-							board_out.append((i, j, (0, 0, 0), board_in[0][i][j][0]))
-				print_state(board_out, board_in[1])
+			board_in = env.output()
+			board_out = []
+			for i in range(12):
+				for j in range(5):
+					if board_in[0][i][j][1] == 1:
+						board_out.append((i, j, (255, 0, 0), board_in[0][i][j][0]))
+					elif board_in[0][i][j][1] == -1:
+						board_out.append((i, j, (0, 0, 0), board_in[0][i][j][0]))
+			print_state(board_out, board_in[1])
 
-			sssp += 1
+			sssp += 2
 			done = False
    
 			for i in range(2):
@@ -123,9 +121,8 @@ def test():
 				if done:
 					win[i] += 1
 					break
-				
+			
 			if done:
-				sssp += t
 				break
 
 		# clear buffer
