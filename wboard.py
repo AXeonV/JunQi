@@ -9,7 +9,7 @@ def calc_pos(row, col, board_h):
 	dis_w, dis_h = 107, 48            # 每个格子的水平和垂直间距
 
 	if row in range(0, 6):
-			center = (margin_left + col * dis_w + cell_w // 2, margin_top + row * dis_h + cell_h // 2)
+		center = (margin_left + col * dis_w + cell_w // 2, margin_top + row * dis_h + cell_h // 2)
 	else:
 		center = (margin_left + col * dis_w + cell_w // 2, board_h - margin_top - (11 - row) * dis_h - cell_h // 2)
 	return center

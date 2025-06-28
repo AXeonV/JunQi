@@ -220,11 +220,12 @@ class JunqiEnv:
 		for i, j in self.base_camps:
 			if abs(i - from_pos[0]) < 2 and abs(j - from_pos[1]) < 2:
 				Sreachable.append((i, j))
-			if from_pos in self.base_camps:
-				Sreachable.append((i + 1, j + 1))
-				Sreachable.append((i + 1, j - 1))
-				Sreachable.append((i - 1, j + 1))
-				Sreachable.append((i - 1, j - 1))
+		if from_pos in self.base_camps:
+			i, j = from_pos
+			Sreachable.append((i + 1, j + 1))
+			Sreachable.append((i + 1, j - 1))
+			Sreachable.append((i - 1, j + 1))
+			Sreachable.append((i - 1, j - 1))
 		# 过滤非法目标
 		for to_pos in Sreachable:
 			# 行营保护规则
