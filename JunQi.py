@@ -599,7 +599,7 @@ class JunqiEnv:
 	def _calculate_combat_reward(self, result, attacker_type):
 		"""战斗奖励计算"""
 		base_rewards = {
-			'attacker': 5.0,
+			'attacker': 2.0,
 			'defender': -1.5,
 			'draw': 0.5
 		}
@@ -608,7 +608,7 @@ class JunqiEnv:
 		# 重要目标加成
 
 		if attacker_type == PieceType.ENGINEER and result.get('defender_type') == PieceType.MINE:
-			reward += 10.0
+			reward += 3.0
 			
 		return reward
 
