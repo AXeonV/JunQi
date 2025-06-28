@@ -72,7 +72,7 @@ def test():
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
 
 	random_seed = 0             #### set this to load a particular checkpoint trained on random seed
-	run_num_pretrained = 2      #### set this to load a particular checkpoint num
+	run_num_pretrained = 0      #### set this to load a particular checkpoint num
 
 	directory = "pth" + '/' + env_name + '/'
 	checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, random_seed, run_num_pretrained)
@@ -93,12 +93,22 @@ def test():
 		for t in range(1, max_ep_len+1):
 			slection_mask = np.zeros(60, dtype=np.int16)
 			
-			if sssp % 1 == 0:
-				print(env.output())
-				print()
+			from wboard import print_state
+     	# if sssp % 2 == 0:
+			if True:
+				board_in = env.output()
+				board_out = []
+				for i in range(12):
+					for j in range(5):
+						if board_in[0][i][j][1] == 1:
+							board_out.append((i, j, (255, 0, 0), board_in[0][i][j][0]))
+						elif board_in[0][i][j][1] == -1:
+							board_out.append((i, j, (0, 0, 0), board_in[0][i][j][0]))
+				print_state(board_out, board_in[1])
+
 			sssp += 1
-			
 			done = False
+   
 			for i in range(2):
 				avail_actions = env.get_onehot_available_actions(0, i, 0)
 				state = env.extract_state(i, 0, slection_mask)
@@ -130,6 +140,20 @@ def test():
 
 	print("============================================================================================")
 
+"""
+def print_state(outputmatrix):
+	# 输出当前棋盘
+	for i in range(12):
+		for j in range(5):
+			if outputmatrix[i][j][1] == 0:
+				print("{:>4s}".format("{空}"), end=' ')
+			elif outputmatrix[i][j][1] == 1:
+				print("{:>4s}".format('[' + outputmatrix[i][j][0] + ']'), end=' ')
+			else:
+				print("{:>4s}".format('(' + outputmatrix[i][j][0] + ')'), end=' ')
+		print()
+	print()
+"""
 
 if __name__ == '__main__':
 	test()

@@ -194,7 +194,7 @@ def train():
 				nash_agent.buffer[i].is_terminals[-1].append(done)
 				nash_agent.buffer[i].rewards[-1].append(reward)
 				nash_agent.buffer[i].is_terminals[-1].append(done)
-			time_step +=1
+			time_step += 1
 			current_ep_reward += np.abs(rewards[0] + rewards[1])
 			if rewards[0] != 0:
 				current_nash_ep_reward = current_nash_ep_reward + rewards[0]

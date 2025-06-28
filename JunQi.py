@@ -119,7 +119,7 @@ class JunqiEnv:
 		self.id_to_type = {0: {}, 1: {}}
 		self.curmove = {}
 		self._init_game()
-  
+	
 	def _init_game(self):
 		self.piece_map.clear()
 		for player in [0, 1]:
@@ -337,7 +337,7 @@ class JunqiEnv:
 
 	def _place_mines(self, player, flag_pos, deploy_area):
 		valid_mine_spots = [pos for pos in deploy_area 
-						   if pos in self.mine_zones[player]]
+							 if pos in self.mine_zones[player]]
 		# 放置剩余地雷
 		for _ in range(3):
 			pos = valid_mine_spots[random.randint(1,len(valid_mine_spots)) - 1]
@@ -349,8 +349,8 @@ class JunqiEnv:
 
 	def _place_bombs(self, player, deploy_area, exclude_pos):
 		valid_spots = [pos for pos in deploy_area 
-					  if pos not in exclude_pos 
-					  and pos not in self.bomb_restrictions[player]]
+						if pos not in exclude_pos 
+						and pos not in self.bomb_restrictions[player]]
 		
 		for _ in range(2):
 			pos = valid_spots[random.randint(1,len(valid_spots)) - 1]
@@ -392,7 +392,7 @@ class JunqiEnv:
 	def _get_adjacent(self, pos):
 		i,j = pos
 		return [(i+di,j+dj) for di,dj in [(-1,0),(1,0),(0,-1),(0,1)]
-			   if 0<=i+di<self.rows and 0<=j+dj<self.cols]
+				 if 0<=i+di<self.rows and 0<=j+dj<self.cols]
 
 	def validate_layout(self, player):
 		# 检查军旗位置
@@ -774,6 +774,7 @@ class JunqiEnv:
 		state['steps_since_attack'].flatten()   # 标量也会被展平
 		]
 		return np.concatenate(processed)
+
 	def _get_pri_tensor(self, player):
 		"""优化私有张量生成"""
 		tensor = np.zeros((12, 5, 12), dtype=np.float16)
@@ -861,6 +862,9 @@ class JunqiEnv:
 	
 	def output(self):
 		outputmatrix = [[('0', 0) for _ in range(5)] for _ in range(12)]
+		last_steps = []
+		if self.move_history.__len__() > 0:
+			last_steps = [self.move_history[-1], self.move_history[-2]]
 		for i in range(12):
 			for j in range(5):
 				typ_index = abs(self.board[i][j]) - 1
@@ -868,13 +872,13 @@ class JunqiEnv:
 					outputmatrix[i][j] = ('0', 0)
 				elif self.board[i][j] > 0:
 					typ_index = self.id_to_type[0][typ_index]
-					print(typ_index)
+					# print(typ_index)
 					outputmatrix[i][j] = (self.rtype[typ_index], 1)
 				else:
 					typ_index = self.id_to_type[1][typ_index]
-					print(typ_index)
+					# print(typ_index)
 					outputmatrix[i][j] = (self.rtype[typ_index], -1)
-		return outputmatrix
+		return [outputmatrix, last_steps]
 
 	def close(self):
 		pass
