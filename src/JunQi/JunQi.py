@@ -490,7 +490,8 @@ class JunqiEnv:
 		# ========== 1. 合法性检查 ==========
 		from_pos, piece_type = self._get_piece_info(u, player)
 		if not self._validate_move(u, from_pos, to_pos, player):
-			return -2.0, False  # 非法移动惩罚
+			# to be deleted
+			return -10000.0, False  # 非法移动惩罚
 		
 		# ========== 2. 执行移动 ==========
 		is_attack = self.board[to_pos] != 0
@@ -526,7 +527,7 @@ class JunqiEnv:
 		})
 		# 消极比赛惩罚
 		if self.step_count - self.last_attack_step > 14:
-			reward -= (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2) * 100
+			reward -= (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2)
 		return reward, done
 	
 	def _invalidate_cache(self, opponent):
@@ -632,7 +633,7 @@ class JunqiEnv:
 			for (p, typ, _) in self.piece_map.values() if p == player
 		)
 		if not movable:
-			return True                
+			return True
 		return False
 
 	def _update_board_state(self, u, from_pos, to_pos, player, piece_type, combat_result):
@@ -819,7 +820,7 @@ class JunqiEnv:
 	def _calculate_pub_distribution(self, opponent):
 		"""计算敌方概率分布"""
 		# 调用外部计算模块
-		from calcdis import calculate_distribution
+		from .calcdis import calculate_distribution
 		out_e_self = self.out_history[1 - opponent]
 		out_e_oppo = self.out_history[opponent]
 		

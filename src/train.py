@@ -6,8 +6,8 @@ import torch
 import warnings
 warnings.filterwarnings("ignore")
 
-from JunQi import JunqiEnv  # 假设军棋环境在此模块中
-from model import Nash      # 假设PPO实现类
+from JunQi.JunQi import JunqiEnv  # 假设军棋环境在此模块中
+from Nash.model import Nash       # 假设PPO实现类
 
 def train():
 	####### initialize environment hyperparameters ######
@@ -68,7 +68,7 @@ def train():
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 
-	log_dir = log_dir + '/' + env_name + '/'
+	log_dir = log_dir + '/'
 	if not os.path.exists(log_dir):
 		os.makedirs(log_dir)
 
@@ -85,17 +85,17 @@ def train():
 	#####################################################
 
 	################### checkpointing ###################
-	directory = "pth" + '/' + env_name + '/'
+	directory = "data/"
 	checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, 0, 1)
 	print("loading network from : " + checkpoint_path)
 
 	run_num_pretrained = 0      #### change this to prevent overwriting weights in same env_name folder
 
-	directory = "pth"
+	directory = "data"
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 
-	directory = directory + '/' + env_name + '/'
+	directory = directory + '/'
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 

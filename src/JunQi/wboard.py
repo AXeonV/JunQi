@@ -16,7 +16,7 @@ def calc_pos(row, col, board_h):
 
 def print_state(pieces, last_steps=[]):
 	# 加载背景棋盘图片
-	board_img = cv2.imread('src/board.jpg')
+	board_img = cv2.imread('resources/board.jpg')
 	board_w, board_h = board_img.shape[1], board_img.shape[0]
 
 	cir_radius = 20                   # 棋子半径
@@ -26,13 +26,14 @@ def print_state(pieces, last_steps=[]):
 		center = calc_pos(row, col, board_h)
 		cv2.circle(board_img, center, cir_radius, color, -1)
 
+	print(last_steps)
 	for step in last_steps:
 		cv2.arrowedLine(board_img, calc_pos(step['from'][0], step['from'][1], board_h), calc_pos(step['to'][0], step['to'][1], board_h), (100, 255, 100), 5, tipLength=0.2)
 
 	# 用PIL画汉字
 	board_img_pil = Image.fromarray(cv2.cvtColor(board_img, cv2.COLOR_BGR2RGB))
 	draw = ImageDraw.Draw(board_img_pil)
-	font = ImageFont.truetype("src/SIMLI.TTF", 36)
+	font = ImageFont.truetype("resources/SIMLI.TTF", 36)
 
 	for row, col, color, label in pieces:
 		fill = (255, 255, 255)

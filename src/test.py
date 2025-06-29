@@ -7,8 +7,8 @@ import torch
 import numpy as np
 import time
 
-from model import Nash
-from JunQi import JunqiEnv
+from Nash.model import Nash
+from JunQi.JunQi import JunqiEnv
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -17,7 +17,7 @@ def test():
 	####### initialize environment hyperparameters ######
 	has_continuous_action_space = False # continuous action space; else discrete
 
-	max_ep_len = 20                     # max timesteps in one episode
+	max_ep_len = 1000                   # max timesteps in one episode
 	max_training_timesteps = int(3e4)   # break training loop if timeteps > max_training_timesteps
 
 	print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
@@ -74,7 +74,7 @@ def test():
 	random_seed = 0             #### set this to load a particular checkpoint trained on random seed
 	run_num_pretrained = 0      #### set this to load a particular checkpoint num
 
-	directory = "pth" + '/' + env_name + '/'
+	directory = "data/"
 	checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, random_seed, run_num_pretrained)
 	print("loading network from : " + checkpoint_path)
 
@@ -93,7 +93,7 @@ def test():
 		for t in range(1, max_ep_len+1):
 			slection_mask = np.zeros(60, dtype=np.int16)
 			
-			from wboard import print_state
+			from JunQi.wboard import print_state
 			board_in = env.output()
 			board_out = []
 			for i in range(12):

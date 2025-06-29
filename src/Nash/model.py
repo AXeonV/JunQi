@@ -4,7 +4,7 @@ from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
 import torch.nn.functional as F
 import numpy as np
-import vtrace
+from . import vtrace
 from torch.nn.utils.rnn import pad_sequence
 
 ################################## set device ##################################
