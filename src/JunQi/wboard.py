@@ -26,7 +26,7 @@ def print_state(pieces, last_steps=[]):
 		center = calc_pos(row, col, board_h)
 		cv2.circle(board_img, center, cir_radius, color, -1)
 
-	print(last_steps)
+	# print(last_steps)
 	for step in last_steps:
 		cv2.arrowedLine(board_img, calc_pos(step['from'][0], step['from'][1], board_h), calc_pos(step['to'][0], step['to'][1], board_h), (100, 255, 100), 5, tipLength=0.2)
 

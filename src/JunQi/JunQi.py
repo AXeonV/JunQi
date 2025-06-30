@@ -489,6 +489,7 @@ class JunqiEnv:
 		self.current_player = player
 		# ========== 1. 合法性检查 ==========
 		from_pos, piece_type = self._get_piece_info(u, player)
+		print(piece_type)
 		if not self._validate_move(u, from_pos, to_pos, player):
 			# to be deleted
 			return -10000.0, False  # 非法移动惩罚
@@ -553,9 +554,11 @@ class JunqiEnv:
 			return False
 		if from_pos == to_pos:
 			return False
-		if player == 0:
-			return self.curmove[self.pos_to_index(to_pos)]
-		return self.curmove[self.rows * self.cols - self.pos_to_index(to_pos) - 1]
+
+		cur_idx = self.pos_to_index(to_pos)
+		if player == 1:
+			cur_idx = self.rows * self.cols - cur_idx - 1
+		return self.curmove[cur_idx]
 
 	def _calculate_strategic_reward(self, to_pos):
 		"""战略位置奖励"""
