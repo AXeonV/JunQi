@@ -185,7 +185,7 @@ class JunqiEnv:
 		else:
 			return np.zeros(60, dtype=np.uint8)
 
-	def _get_selection_mask(self, player):
+	def _get_selection_mask(self, player, test_pos=None):
 		"""选择阶段掩码生成"""
 		mask = np.zeros((self.rows, self.cols), dtype=np.uint8)
 		for pos, (p, typ, uid) in self.piece_map.items():
@@ -194,6 +194,8 @@ class JunqiEnv:
 					mask[pos] = 1
 				else:
 					mask[(self.rows - pos[0] - 1, self.cols - pos[1] - 1)] = 1
+		if test_pos is not None:
+			return mask[test_pos]
 		return mask
 
 	def _get_movement_mask(self, player, from_pos):
@@ -469,7 +471,6 @@ class JunqiEnv:
 		self.railway_mask = self._create_railway_mask()
 		self.id_to_type = {0: {}, 1: {}}
 		self._init_game()
-		#assert self.validate_layout(0) and self.validate_layout(1), "非法布局"
 
 	# Step
 	def Tstep(self, player, action0, action1):
@@ -489,7 +490,7 @@ class JunqiEnv:
 		self.current_player = player
 		# ========== 1. 合法性检查 ==========
 		from_pos, piece_type = self._get_piece_info(u, player)
-		print(piece_type)
+		assert piece_type not in [PieceType.MINE, PieceType.FLAG], f"{self.pos_to_index(from_pos), self._get_selection_mask(player, from_pos)}"
 		if not self._validate_move(u, from_pos, to_pos, player):
 			# to be deleted
 			return -10000.0, False  # 非法移动惩罚
