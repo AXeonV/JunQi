@@ -117,7 +117,6 @@ class JunqiEnv:
 		self.id_to_position = {0: {}, 1: {}}
 		self.railway_mask = self._create_railway_mask()
 		self.id_to_type = {0: {}, 1: {}}
-		self.curmove = {}
 		self._init_game()
 	
 	def _init_game(self):
@@ -180,8 +179,7 @@ class JunqiEnv:
 		if crphase == 0:
 			return self._get_selection_mask(player).flatten()
 		elif crphase == 1:
-			self.curmove = self._get_movement_mask(player, self.index_to_pos(selected_pos)).flatten()
-			return self.curmove
+			return self._get_movement_mask(player, self.index_to_pos(selected_pos)).flatten()
 		else:
 			return np.zeros(60, dtype=np.uint8)
 
@@ -213,42 +211,36 @@ class JunqiEnv:
 			return mask
 		
 		# 根据棋子类型选择移动方式
-		reachable = {}
+		reachable = []
 		if piece_type == PieceType.ENGINEER:
 			reachable = self._get_engineer_reachable(from_pos)
 		elif self.railway_mask[from_pos]:
 			reachable = self._get_railway_reachable(from_pos, piece_type)
-		Sreachable = self._get_road_reachable(from_pos)
-		for i, j in self.base_camps:
-			if abs(i - from_pos[0]) < 2 and abs(j - from_pos[1]) < 2:
-				Sreachable.append((i, j))
+		reachable += self._get_road_reachable(from_pos)
 		if from_pos in self.base_camps:
 			i, j = from_pos
-			Sreachable.append((i + 1, j + 1))
-			Sreachable.append((i + 1, j - 1))
-			Sreachable.append((i - 1, j + 1))
-			Sreachable.append((i - 1, j - 1))
+			reachable.append((i + 1, j + 1))
+			reachable.append((i + 1, j - 1))
+			reachable.append((i - 1, j + 1))
+			reachable.append((i - 1, j - 1))
+
 		# 过滤非法目标
-		for to_pos in Sreachable:
-			# 行营保护规则
-			if to_pos in self.base_camps and self.board[to_pos] != 0:
-				continue
-			if (from_pos in [(5, 1), (5, 3)] and to_pos in [(6, 1), (6, 3)]) or (to_pos in [(5, 1), (5, 3)] and from_pos in [(6, 1), (6, 3)]):
-				continue
-			if player == 0:
-				mask[to_pos] = True
-			else: 
-				mask[(self.rows - to_pos[0] - 1, self.cols - to_pos[1] - 1)] = True
 		for to_pos in reachable:
 			# 行营保护规则
 			if to_pos in self.base_camps and self.board[to_pos] != 0:
 				continue
 			if (from_pos in [(5, 1), (5, 3)] and to_pos in [(6, 1), (6, 3)]) or (to_pos in [(5, 1), (5, 3)] and from_pos in [(6, 1), (6, 3)]):
 				continue
+			if self.board[to_pos] != 0: 
+				if (self.board[from_pos] < 0 and self.board[to_pos] < 0) or (self.board[from_pos] > 0 and self.board[to_pos] > 0):
+					continue
 			if player == 0:
 				mask[to_pos] = True
 			else: 
 				mask[(self.rows - to_pos[0] - 1, self.cols - to_pos[1] - 1)] = True
+    
+		mask[from_pos] = 0
+  
 		return mask
 
 	def _get_road_reachable(self, from_pos):
@@ -491,9 +483,6 @@ class JunqiEnv:
 		# ========== 1. 合法性检查 ==========
 		from_pos, piece_type = self._get_piece_info(u, player)
 		assert piece_type not in [PieceType.MINE, PieceType.FLAG], f"{self.pos_to_index(from_pos), self._get_selection_mask(player, from_pos)}"
-		if not self._validate_move(u, from_pos, to_pos, player):
-			# to be deleted
-			return -10000.0, False  # 非法移动惩罚
 		
 		# ========== 2. 执行移动 ==========
 		is_attack = self.board[to_pos] != 0
@@ -543,23 +532,6 @@ class JunqiEnv:
 			if p == player and uid == u:
 				return pos, typ
 		return None, None
-
-	def _validate_move(self, u, from_pos, to_pos, player):
-		"""综合验证移动合法性"""
-		# 基础存在性检查
-		if from_pos is None:
-			return False
-			
-		# 固定棋子检查
-		if player != self.piece_map[from_pos][0]:
-			return False
-		if from_pos == to_pos:
-			return False
-
-		cur_idx = self.pos_to_index(to_pos)
-		if player == 1:
-			cur_idx = self.rows * self.cols - cur_idx - 1
-		return self.curmove[cur_idx]
 
 	def _calculate_strategic_reward(self, to_pos):
 		"""战略位置奖励"""
