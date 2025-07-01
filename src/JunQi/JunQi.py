@@ -622,6 +622,7 @@ class JunqiEnv:
 		# 消极比赛，强制终止
 		if self.step_count - self.last_attack_step > 70:
 			return True
+		
 		# 检查军旗存在
 		flags = False
 		for (p, typ, _) in self.piece_map.values():
@@ -639,6 +640,8 @@ class JunqiEnv:
 		if not movable:
 			return True
 		return False
+
+		# 还有一些终止情况，在另处判断
 
 	def _update_board_state(self, u, from_pos, to_pos, player, piece_type, combat_result):
 		"""更新游戏状态"""

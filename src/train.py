@@ -168,6 +168,7 @@ def train():
 
 	# training loop
 	sete = 0
+	chosen_wrong_reward = -100
 	while time_step < max_training_timesteps:
 		env.reset()
 		current_ep_reward = 0
@@ -175,25 +176,48 @@ def train():
 		nash_agent.new_buffer()
 		done = False
 		rewards = []
+
 		for t in range(1, max_ep_len+1):
 			slection_mask = np.zeros(60, dtype=np.int16)
 			for i in range(2):
-				avail_actions = env.get_onehot_available_actions(0, i, 0)
-				state = env.extract_state(i, 0, slection_mask)
-				action0 = nash_agent.select_action(state, i, avail_actions)
-
 				sete += 1
+				avail_actions0 = env.get_onehot_available_actions(0, i, 0)
+    
+				# 另外终止情况1：
+				if np.all(avail_actions0 == 0):
+					done = True
+					break
+				state = env.extract_state(i, 0, slection_mask)
+				action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
+				avail_actions1 = env.get_onehot_available_actions(1, i, action0)
 
-				avail_actions = env.get_onehot_available_actions(1, i, action0)
+				# 另外终止情况2：
+				while np.all(avail_actions1 == 0):
+					avail_actions0[action0] = 0
+					if np.all(avail_actions0 == 0):
+						done = True
+						break
+					nash_agent.buffer[i].rewards[-1].append(chosen_wrong_reward)
+					nash_agent.buffer[i].is_terminals[-1].append(done)
+					action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
+					avail_actions1 = env.get_onehot_available_actions(1, i, action0)
+     
+				if done:
+					nash_agent.buffer[i].rewards[-1].append(chosen_wrong_reward)
+					nash_agent.buffer[i].is_terminals[-1].append(done)
+					break
+   
 				slection_mask[action0] = 1
 				state = env.extract_state(i, 1, slection_mask)
-				action1 = nash_agent.select_action(state, i, avail_actions)
+				action1 = nash_agent.select_action(state, i, avail_actions1, test=True)
 				reward, done = env.Tstep(i, action0, action1)
+    
 				rewards.append(reward)
 				nash_agent.buffer[i].rewards[-1].append(reward)
 				nash_agent.buffer[i].is_terminals[-1].append(done)
 				nash_agent.buffer[i].rewards[-1].append(reward)
 				nash_agent.buffer[i].is_terminals[-1].append(done)
+    
 			time_step += 1
 			current_ep_reward += np.abs(rewards[0] + rewards[1])
 			if rewards[0] != 0:
@@ -227,8 +251,8 @@ def train():
 				print_nash_running_reward = 0
 				print_running_episodes = 0
 
-			# break; if the episode is over
-			if True:
+			# break if the episode is over
+			if done:
 				# save model weights
 				if time_step - last_save_model_step > save_model_freq:
 					print("--------------------------------------------------------------------------------------------")
@@ -240,6 +264,7 @@ def train():
 					print("--------------------------------------------------------------------------------------------")
 					last_save_model_step = time_step
 				break
+  
 		# update PPO agent
 		if time_step % update_timestep == 0:
 			if n >= delta_m:
