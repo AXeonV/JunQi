@@ -648,13 +648,20 @@ class JunqiEnv:
 		self.id_to_position[player][u] = to_pos
 		# 处理战斗结果
 		if combat_result:
-			defender_u = self.piece_map[to_pos][2]
-			del self.piece_map[to_pos]
-			self.board[to_pos] = 0
-			if not combat_result['attacker_survive']:
-				return  # 同归于尽
-				
-		# 设置新位置
+			if combat_result['winner']:
+				if combat_result['attacker_survive'] == True:
+					self.piece_map[to_pos] = (player, piece_type, u)
+					if player == 0:
+						self.board[to_pos] = u + 1
+					else:
+						self.board[to_pos] = -(u + 1)
+					return
+			else:
+				del self.piece_map[to_pos]
+				self.board[to_pos] = 0
+				return
+			return
+		# 如果没有战斗，直接移动		
 		self.piece_map[to_pos] = (player, piece_type, u)
 		if player == 0:
 			self.board[to_pos] = u + 1
