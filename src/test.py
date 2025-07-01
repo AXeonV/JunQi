@@ -67,6 +67,7 @@ def test():
 	print("testing environment name : JunQi")
 	env_name = "JunQi"
 	
+	timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
 
 	print("============================================================================================")
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
@@ -102,7 +103,7 @@ def test():
 						board_out.append((i, j, (255, 0, 0), board_in[0][i][j][0]))
 					elif board_in[0][i][j][1] == -1:
 						board_out.append((i, j, (0, 0, 0), board_in[0][i][j][0]))
-			print_state(board_out, board_in[1])
+			print_state(board_out, int(sssp / 2), timestamp, board_in[1])
 
 			sssp += 2
 			done = False
