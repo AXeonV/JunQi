@@ -506,6 +506,7 @@ class JunqiEnv:
 		done = self._check_termination(1 - player)
 		if done:
 			reward += 5000
+			return reward, done
 		if is_attack:
 			self._invalidate_cache(0)
 			self._invalidate_cache(1)
@@ -518,7 +519,7 @@ class JunqiEnv:
 		})
 		# 消极比赛惩罚
 		if self.step_count - self.last_attack_step > 14:
-			reward -= (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2)
+			reward -= 2 * (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2)
 		return reward, done
 	
 	def _invalidate_cache(self, opponent):
@@ -539,8 +540,8 @@ class JunqiEnv:
 		if self.current_player == 1:
 			add = 5 - to_pos[0]
 		if to_pos in self.base_camps:  # 行营控制
-			return 0.8 + add * 0.3
-		return 0.0 + add * 0.3
+			return 3 + add * 1.3
+		return 0 + add * 1.3
 	
 	def _resolve_combat(self, from_pos, to_pos, attacker_player):
 		"""战斗结果解析"""
@@ -548,12 +549,18 @@ class JunqiEnv:
 		defender_type = self.piece_map[to_pos][1]
 		attacker_id = self.piece_map[from_pos][2]
 		defender_id = self.piece_map[to_pos][2]
+
+		if defender_type == PieceType.FLAG:
+			# 攻击军旗
+			self.out_history[attacker_player][attacker_id, defender_id] = 1
+			return {'winner': 'attacker', 'attacker_survive': True}
+		
 		# 工兵排雷
 		if attacker_type == PieceType.ENGINEER and defender_type == PieceType.MINE:
 			self.out_history[attacker_player][attacker_id, defender_id] = 1
 			return {'winner': 'attacker', 'attacker_survive': True}
 			
-		# 炸弹同归
+		# 炸弹 or 同归
 		if attacker_type == PieceType.BOMB or defender_type == PieceType.BOMB or attacker_type == defender_type:
 			self.out_history[attacker_player][attacker_id, defender_id] = 1
 			self.out_history[1 - attacker_player][defender_id, attacker_id] = 1
@@ -577,15 +584,15 @@ class JunqiEnv:
 		"""战斗奖励计算"""
 		base_rewards = {
 			'attacker': 10.0,
-			'defender': -2.0,
-			'draw': 5.0
+			'defender': -6.0,
+			'draw': 8.0
 		}
 		reward = base_rewards.get(result['winner'], 0.0)
 
 		# 重要目标加成
 
 		if attacker_type == PieceType.ENGINEER and result.get('defender_type') == PieceType.MINE:
-			reward += 10.0
+			reward += 50.0
 			
 		return reward
 
