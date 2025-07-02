@@ -14,7 +14,7 @@ def train():
 	has_continuous_action_space = False # continuous action space; else discrete
 
 	max_ep_len = 1000                   # max timesteps in one episode
-	max_training_timesteps = int(1e5)   # break training loop if timeteps > max_training_timesteps
+	max_training_timesteps = int(1e6)   # break training loop if timeteps > max_training_timesteps
 
 	print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
 	log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
@@ -85,11 +85,11 @@ def train():
 	#####################################################
 
 	################### checkpointing ###################
-	directory = "data/"
-	checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, 0, 1)
-	print("loading network from : " + checkpoint_path)
+	# directory = "data/"
+	# checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, 0, 1)
+	# print("loading network from : " + checkpoint_path)
 
-	run_num_pretrained = 0      #### change this to prevent overwriting weights in same env_name folder
+	run_num_pretrained = 3      #### change this to prevent overwriting weights in same env_name folder
 
 	directory = "data"
 	if not os.path.exists(directory):
@@ -144,6 +144,17 @@ def train():
 	################# training procedure ################
 	# 初始化PPO
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
+
+	# loading pretrained model(if needed)
+	load_checkpoint = True
+	if load_checkpoint:
+		load_checkpoint_path = directory + "Nash_JunQi_0_2_0.pth"
+		print("loading network from : " + load_checkpoint_path)
+		if os.path.exists(load_checkpoint_path):
+			nash_agent.load(load_checkpoint_path)
+		else:
+			print("checkpoint not found at : " + load_checkpoint_path)
+			exit(0)
 
 	# track total training time
 	start_time = datetime.now().replace(microsecond=0)

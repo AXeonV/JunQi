@@ -73,7 +73,7 @@ def test():
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
 
 	random_seed = 0             #### set this to load a particular checkpoint trained on random seed
-	run_num_pretrained = 0      #### set this to load a particular checkpoint num
+	run_num_pretrained = 3      #### set this to load a particular checkpoint num
 
 	directory = "data/"
 	checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, random_seed, run_num_pretrained)
