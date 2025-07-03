@@ -62,7 +62,7 @@ def test():
 		'isMoved_I': (25,)
 	}
 	'''
-	state_dim = 2582
+	state_dim = 4502		 # 状态空间维度
 	action_dim = 5 * 12  # 最大动作空间
 	print("testing environment name : JunQi")
 	
@@ -72,7 +72,7 @@ def test():
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
 
 	directory = "data/"
-	checkpoint_path = directory + "Nash_JunQi_0_5_0.pth"
+	checkpoint_path = directory + "Nash_JunQi_0_4_0.pth"
 	print("loading network from : " + checkpoint_path)
 	nash_agent.load(checkpoint_path)
 	print("--------------------------------------------------------------------------------------------")

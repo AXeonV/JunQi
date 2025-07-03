@@ -62,32 +62,34 @@ def battle():
 		'isMoved_I': (25,)
 	}
 	'''
-	state_dim = 2582
-	action_dim = 5 * 12  # 最大动作空间
+	state_dim = [4502, 3302]
+	action_dim = 5 * 12
 	print("testing environment name : JunQi")
 	
 	timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
 
 	print("============================================================================================")
 	nash_agent = [
-	Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
-	,Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
+	Nash(state_dim[0], action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True),
+	Nash(state_dim[1], action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
   ]
 
 	directory = "data/"
-	checkpoint_path0 = directory + "Nash_JunQi_0_5_0.pth"
-	checkpoint_path1 = directory + "Nash_JunQi_0_1_0.pth"
+	checkpoint_path0 = directory + "Nash_JunQi_0_4_0.pth"
+	checkpoint_path1 = directory + "Nash_JunQi_0_3_0.pth"
 	print("loading network0 from : " + checkpoint_path0)
 	print("loading network1 from : " + checkpoint_path1)
 	nash_agent[0].load(checkpoint_path0)
 	nash_agent[1].load(checkpoint_path1)
 	print("--------------------------------------------------------------------------------------------")
 
+	mx_history = [50, 30]
 	total_test_episodes = 100
 	win = [0, 0]
 	sssp = 0
 	for ep in range(1, total_test_episodes+1):
-		
+   
+		print("Episode: {}".format(ep))
 		env.reset()
 
 		for t in range(1, max_ep_len+1):
@@ -116,7 +118,7 @@ def battle():
 					win[winner] += 1
 					done = True
 					break
-				state = env.extract_state(i, 0, slection_mask)
+				state = env.extract_state(i, 0, slection_mask, mx_history[i])
 				
 				action0 = nash_agent[i].select_action(state, i, avail_actions0, test=True)
 				avail_actions1 = env.get_onehot_available_actions(1, i, action0)
@@ -133,7 +135,7 @@ def battle():
 					win[winner] += 1
 					break
 				slection_mask[action0] = 1
-				state = env.extract_state(i, 1, slection_mask)
+				state = env.extract_state(i, 1, slection_mask, mx_history[i])
 				action1 = nash_agent[i].select_action(state, i, avail_actions1, test=True)
 				reward, done = env.Tstep(i, action0, action1)
 				

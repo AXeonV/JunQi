@@ -39,7 +39,7 @@ class JunqiEnv:
 			10:'排',
 			11:'工'
 		}
-		self.maxhistory = 25
+		self.maxhistory = 50
 		self.rows = 12  # 总行数
 		self.cols = 5   # 总列数
 		
@@ -746,17 +746,18 @@ class JunqiEnv:
 		return (dx == 1 and dy == 0) or (dx == 0 and dy == 1)
 
 	# Extract data
-	def extract_state(self, player, crphase, selection_mask):
+	def extract_state(self, player, crphase, selection_mask, mx_history=None):
 		self.current_player = player
 		"""优化后的状态提取函数"""
 		# 生成各组件
 		state = {
-			'phase': np.array([crphase], dtype = np.int16),
-			'Pri_I': self._get_pri_tensor(player),
-			'Pub_oppo': self._get_cached_pub_tensor(1 - player),
-			'Move': self._get_compressed_move_tensor(),
-			'selected': selection_mask,
-			'steps_since_attack': np.array([self.step_count - self.last_attack_step], dtype=np.int16),
+			'phase': np.array([crphase], dtype = np.int16),                                            # 1
+			'Pri_I': self._get_pri_tensor(player),                                                     # 12 * 12 * 5
+			'Pub_oppo': self._get_cached_pub_tensor(1 - player),                                       # 12 * 12 * 5
+			'Move': self._get_compressed_move_tensor(mx_history),                                      # 50 * 12 * 5
+			'selected': selection_mask,                                                                # 12 * 5
+			'steps_since_attack': np.array([self.step_count - self.last_attack_step], dtype=np.int16), # 1
+			                                                                                    # total: 4502
 		}
 		
 		# 转换为适合PyTorch的格式并缓存
@@ -785,7 +786,7 @@ class JunqiEnv:
 	def _get_cached_pub_tensor(self, opponent):
 		"""带缓存的公开概率生成"""
 		if self.prob_cache['pub'][opponent] is None:
-			self.prob_cache['pub'][opponent] = self._calculate_pub_distribution(opponent)
+			self.prob_cache['pub'][opponent] = self._get_pub_tensor(opponent)
 		return self.prob_cache['pub'][opponent]
 
 	def _get_pub_tensor(self, opponent):
@@ -826,10 +827,12 @@ class JunqiEnv:
 			posflag = self.flagnum[opponent]
 		return calculate_distribution(out_e_self, out_e_oppo, self.is_moved[opponent], mpri, posflag)
 
-	def _get_compressed_move_tensor(self):
+	def _get_compressed_move_tensor(self, mx_history=None):
 		"""压缩移动历史张量"""
-		tensor = np.zeros((12, 5, self.maxhistory), dtype=np.int8)
-		for t in range(min(self.maxhistory, len(self.move_history))):
+		if mx_history is None:
+			mx_history = self.maxhistory
+		tensor = np.zeros((12, 5, mx_history), dtype=np.int8)
+		for t in range(min(mx_history, len(self.move_history))):
 			move = self.move_history[-t-1]  # 从最新开始填充
 			i_from, j_from = move['from']
 			i_to, j_to = move['to']

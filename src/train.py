@@ -14,11 +14,11 @@ def train():
 	has_continuous_action_space = False # continuous action space; else discrete
 
 	max_ep_len = 1000                   # max timesteps in one episode
-	max_training_timesteps = int(1e5)   # break training loop if timeteps > max_training_timesteps
+	max_training_timesteps = int(1e6)   # break training loop if timeteps > max_training_timesteps
 
 	print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
 	log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
-	save_model_freq = int(10000)         # save model frequency (in num timesteps)
+	save_model_freq = int(10000)        # save model frequency (in num timesteps)
 
 	action_std = 0.6                    # starting std for action distribution (Multivariate Normal)
 	action_std_decay_rate = 0.05        # linearly decay action_std (action_std = action_std - action_std_decay_rate)
@@ -39,7 +39,7 @@ def train():
 	################ PPO hyperparameters ################
 	update_timestep = max_ep_len * 4      # update policy every n timesteps
 
-	lr_actor = 0.004       # learning rate for actor network
+	lr_actor = 0.004        # learning rate for actor network
 	lr_critic = 0.004       # learning rate for critic network
 
 	random_seed = 0         # set random seed if required (0 = no random seed)
@@ -57,7 +57,7 @@ def train():
 		'isMoved_I': (25,)
 	}
 	'''
-	state_dim = 2582
+	state_dim = 4502     # 状态空间维度
 	action_dim = 5 * 12  # 最大动作空间
 	print("training environment name : JunQi")
 	env_name = "JunQi"
@@ -89,7 +89,7 @@ def train():
 	# checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, 0, 1)
 	# print("loading network from : " + checkpoint_path)
 
-	run_num_pretrained = 1      #### change this to prevent overwriting weights in same env_name folder
+	run_num_pretrained = 6      #### change this to prevent overwriting weights in same env_name folder
 
 	directory = "data"
 	if not os.path.exists(directory):
@@ -146,9 +146,9 @@ def train():
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
 
 	# loading pretrained model(if needed)
-	load_checkpoint = False
+	load_checkpoint = True
 	if load_checkpoint:
-		load_checkpoint_path = directory + "Nash_JunQi_0_3_0.pth"
+		load_checkpoint_path = directory + "Nash_JunQi_0_4_0.pth"
 		print("loading network from : " + load_checkpoint_path)
 		if os.path.exists(load_checkpoint_path):
 			nash_agent.load(load_checkpoint_path)
