@@ -72,7 +72,7 @@ def test():
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
 
 	directory = "data/"
-	checkpoint_path = directory + "Nash_JunQi_0_1_0.pth"
+	checkpoint_path = directory + "Nash_JunQi_0_5_0.pth"
 	print("loading network from : " + checkpoint_path)
 	nash_agent.load(checkpoint_path)
 	print("--------------------------------------------------------------------------------------------")
@@ -107,8 +107,9 @@ def test():
 				# 另外终止情况1：
 				if np.all(avail_actions0 == 0):
 					winner = 1 - i
-					done = True
 					win[winner] += 1
+					done = True
+					break
 				state = env.extract_state(i, 0, slection_mask)
 				action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
 				avail_actions1 = env.get_onehot_available_actions(1, i, action0)
@@ -139,6 +140,7 @@ def test():
 		# clear buffer
 		nash_agent.buffer.clear()
 	env.close()
+	print(sssp / total_test_episodes)
 
 	print("============================================================================================")
 

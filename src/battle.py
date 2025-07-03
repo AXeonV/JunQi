@@ -75,7 +75,7 @@ def battle():
   ]
 
 	directory = "data/"
-	checkpoint_path0 = directory + "Nash_JunQi_0_0_0.pth"
+	checkpoint_path0 = directory + "Nash_JunQi_0_5_0.pth"
 	checkpoint_path1 = directory + "Nash_JunQi_0_1_0.pth"
 	print("loading network0 from : " + checkpoint_path0)
 	print("loading network1 from : " + checkpoint_path1)
@@ -83,7 +83,7 @@ def battle():
 	nash_agent[1].load(checkpoint_path1)
 	print("--------------------------------------------------------------------------------------------")
 
-	total_test_episodes = 20
+	total_test_episodes = 100
 	win = [0, 0]
 	sssp = 0
 	for ep in range(1, total_test_episodes+1):
@@ -113,8 +113,8 @@ def battle():
 				# 另外终止情况1：
 				if np.all(avail_actions0 == 0):
 					winner = 1 - i
-					done = True
 					win[winner] += 1
+					done = True
 					break
 				state = env.extract_state(i, 0, slection_mask)
 				
@@ -149,7 +149,7 @@ def battle():
 		nash_agent[1].buffer.clear()
 	env.close()
 	print(sssp / total_test_episodes)
-	print("v0 vs v1 \t\t Win: {}% \t\t Lose: {}%".format(round(win[0] / total_test_episodes * 100, 2), round(win[1] / total_test_episodes * 100, 2)))
+	print("N vs P \t\t Win: {}% \t\t Lose: {}%".format(round(win[0] / total_test_episodes * 100, 2), round(win[1] / total_test_episodes * 100, 2)))
 
 	print("============================================================================================")
 

@@ -89,7 +89,7 @@ def train():
 	# checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, 0, 1)
 	# print("loading network from : " + checkpoint_path)
 
-	run_num_pretrained = 3      #### change this to prevent overwriting weights in same env_name folder
+	run_num_pretrained = 1      #### change this to prevent overwriting weights in same env_name folder
 
 	directory = "data"
 	if not os.path.exists(directory):
@@ -146,7 +146,7 @@ def train():
 	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
 
 	# loading pretrained model(if needed)
-	load_checkpoint = True
+	load_checkpoint = False
 	if load_checkpoint:
 		load_checkpoint_path = directory + "Nash_JunQi_0_3_0.pth"
 		print("loading network from : " + load_checkpoint_path)
