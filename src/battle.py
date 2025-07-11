@@ -62,8 +62,8 @@ def battle():
 		'isMoved_I': (25,)
 	}
 	'''
-	state_dim = [4502, 3302]
-	action_dim = 5 * 12
+	state_dim = [4441, 4441]
+	action_dim = 25 * 60
 	print("testing environment name : JunQi")
 	
 	timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
@@ -75,15 +75,15 @@ def battle():
   ]
 
 	directory = "data/"
-	checkpoint_path0 = directory + "Nash_JunQi_0_4_0.pth"
-	checkpoint_path1 = directory + "Nash_JunQi_0_3_0.pth"
+	checkpoint_path0 = directory + "Nash_JunQi_0_6_0.pth"
+	checkpoint_path1 = directory + "Nash_JunQi_0_2_0.pth"
 	print("loading network0 from : " + checkpoint_path0)
 	print("loading network1 from : " + checkpoint_path1)
 	nash_agent[0].load(checkpoint_path0)
 	nash_agent[1].load(checkpoint_path1)
 	print("--------------------------------------------------------------------------------------------")
 
-	mx_history = [50, 30]
+	mx_history = [50, 50]
 	total_test_episodes = 100
 	win = [0, 0]
 	sssp = 0
@@ -93,57 +93,27 @@ def battle():
 		env.reset()
 
 		for t in range(1, max_ep_len+1):
-			slection_mask = np.zeros(60, dtype=np.int16)
-
-			# from JunQi.wboard import print_state
-			# board_in = env.output()
-			# board_out = []
-			# for i in range(12):
-			# 	for j in range(5):
-			# 		if board_in[0][i][j][1] == 1:
-			# 			board_out.append((i, j, (255, 0, 0), board_in[0][i][j][0]))
-			# 		elif board_in[0][i][j][1] == -1:
-			# 			board_out.append((i, j, (0, 0, 0), board_in[0][i][j][0]))
-			# print_state(board_out, int(sssp / 2), timestamp, board_in[1])
 						
 			sssp += 2
 			done = False
+			winner = -1
 	 
 			for i in range(2):
 				winner = i
-				avail_actions0 = env.get_onehot_available_actions(0, i, 0)
-				# 另外终止情况1：
-				if np.all(avail_actions0 == 0):
+				avail_actions = env.get_onehot_available_actions(i)
+				if np.all(avail_actions == 0):
 					winner = 1 - i
-					win[winner] += 1
 					done = True
 					break
-				state = env.extract_state(i, 0, slection_mask, mx_history[i])
-				
-				action0 = nash_agent[i].select_action(state, i, avail_actions0, test=True)
-				avail_actions1 = env.get_onehot_available_actions(1, i, action0)
-				# 另外终止情况2：
-				while np.all(avail_actions1 == 0):
-					avail_actions0[action0] = 0
-					if np.all(avail_actions0 == 0):
-						done = True
-						break
-					action0 = nash_agent[i].select_action(state, i, avail_actions0, test=True)
-					avail_actions1 = env.get_onehot_available_actions(1, i, action0)
-				if done:
-					winner = 1 - i
-					win[winner] += 1
-					break
-				slection_mask[action0] = 1
-				state = env.extract_state(i, 1, slection_mask, mx_history[i])
-				action1 = nash_agent[i].select_action(state, i, avail_actions1, test=True)
-				reward, done = env.Tstep(i, action0, action1)
+				state = env.extract_state(i, mx_history[i])
+				action = nash_agent[i].select_action(state, i, avail_actions, test=True)
+				reward, done = env.Tstep(i, action)
 				
 				if done:
-					win[winner] += 1
 					break
 			
 			if done:
+				win[winner] += 1
 				break
 
 		# clear buffer

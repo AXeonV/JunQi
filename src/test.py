@@ -62,8 +62,8 @@ def test():
 		'isMoved_I': (25,)
 	}
 	'''
-	state_dim = 4502		 # 状态空间维度
-	action_dim = 5 * 12  # 最大动作空间
+	state_dim = 4441
+	action_dim = 25 * 60
 	print("testing environment name : JunQi")
 	
 	timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
@@ -78,14 +78,12 @@ def test():
 	print("--------------------------------------------------------------------------------------------")
 
 	total_test_episodes = 1
-	win = [0, 0]
 	sssp = 0
 	for ep in range(1, total_test_episodes+1):
 		
 		env.reset()
 
 		for t in range(1, max_ep_len+1):
-			slection_mask = np.zeros(60, dtype=np.int16)
 			
 			from JunQi.wboard import print_state
 			board_in = env.output()
@@ -102,36 +100,15 @@ def test():
 			done = False
 	 
 			for i in range(2):
-				winner = i
-				avail_actions0 = env.get_onehot_available_actions(0, i, 0)
-				# 另外终止情况1：
-				if np.all(avail_actions0 == 0):
-					winner = 1 - i
-					win[winner] += 1
+				avail_actions = env.get_onehot_available_actions(i)
+				if np.all(avail_actions == 0):
 					done = True
 					break
-				state = env.extract_state(i, 0, slection_mask)
-				action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
-				avail_actions1 = env.get_onehot_available_actions(1, i, action0)
-				# 另外终止情况2：
-				while np.all(avail_actions1 == 0):
-					avail_actions0[action0] = 0
-					if np.all(avail_actions0 == 0):
-						done = True
-						break
-					action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
-					avail_actions1 = env.get_onehot_available_actions(1, i, action0)
-				if done:
-					winner = 1 - i
-					win[winner] += 1
-					break
-				slection_mask[action0] = 1
-				state = env.extract_state(i, 1, slection_mask)
-				action1 = nash_agent.select_action(state, i, avail_actions1, test=True)
-				reward, done = env.Tstep(i, action0, action1)
+				state = env.extract_state(i)
+				action = nash_agent.select_action(state, i, avail_actions, test=True)
+				reward, done = env.Tstep(i, action)
 				
 				if done:
-					win[winner] += 1
 					break
 			
 			if done:

@@ -6,8 +6,8 @@ import torch
 import warnings
 warnings.filterwarnings("ignore")
 
-from JunQi.JunQi import JunqiEnv  # 假设军棋环境在此模块中
-from Nash.model import Nash       # 假设PPO实现类
+from JunQi.JunQi import JunqiEnv
+from Nash.model import Nash
 
 def train():
 	####### initialize environment hyperparameters ######
@@ -57,8 +57,8 @@ def train():
 		'isMoved_I': (25,)
 	}
 	'''
-	state_dim = 4502     # 状态空间维度
-	action_dim = 5 * 12  # 最大动作空间
+	state_dim = 4441       # 状态空间维度
+	action_dim = 25 * 60   # 最大动作空间
 	print("training environment name : JunQi")
 	env_name = "JunQi"
 	###################### logging ######################
@@ -179,7 +179,6 @@ def train():
 
 	# training loop
 	sete = 0
-	chosen_wrong_reward = -100
 	while time_step < max_training_timesteps:
 		env.reset()
 		current_ep_reward = 0
@@ -189,43 +188,18 @@ def train():
 		rewards = []
 
 		for t in range(1, max_ep_len+1):
-			slection_mask = np.zeros(60, dtype=np.int16)
 			for i in range(2):
-				sete += 1
-				avail_actions0 = env.get_onehot_available_actions(0, i, 0)
-    
-				# 另外终止情况1：
-				if np.all(avail_actions0 == 0):
+				avail_actions = env.get_onehot_available_actions(i)
+				if np.all(avail_actions == 0):
 					done = True
+					nash_agent.buffer[1 - i].rewards[-1][-1] += 5000
+					nash_agent.buffer[1 - i].is_terminals[-1][-1] = True
 					break
-				state = env.extract_state(i, 0, slection_mask)
-				action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
-				avail_actions1 = env.get_onehot_available_actions(1, i, action0)
-
-				# 另外终止情况2：
-				while np.all(avail_actions1 == 0):
-					avail_actions0[action0] = 0
-					if np.all(avail_actions0 == 0):
-						done = True
-						break
-					nash_agent.buffer[i].rewards[-1].append(chosen_wrong_reward)
-					nash_agent.buffer[i].is_terminals[-1].append(done)
-					action0 = nash_agent.select_action(state, i, avail_actions0, test=True)
-					avail_actions1 = env.get_onehot_available_actions(1, i, action0)
-     
-				if done:
-					nash_agent.buffer[i].rewards[-1].append(chosen_wrong_reward)
-					nash_agent.buffer[i].is_terminals[-1].append(done)
-					break
-   
-				slection_mask[action0] = 1
-				state = env.extract_state(i, 1, slection_mask)
-				action1 = nash_agent.select_action(state, i, avail_actions1, test=True)
-				reward, done = env.Tstep(i, action0, action1)
-    
+				sete += 1
+				state = env.extract_state(i)
+				action = nash_agent.select_action(state, i, avail_actions, test=True)
+				reward, done = env.Tstep(i, action)
 				rewards.append(reward)
-				nash_agent.buffer[i].rewards[-1].append(reward)
-				nash_agent.buffer[i].is_terminals[-1].append(done)
 				nash_agent.buffer[i].rewards[-1].append(reward)
 				nash_agent.buffer[i].is_terminals[-1].append(done)
     
@@ -235,8 +209,8 @@ def train():
 				current_nash_ep_reward = current_nash_ep_reward + rewards[0]
 			else:
 				current_nash_ep_reward = current_nash_ep_reward - rewards[1]
+    
 			if time_step % log_freq == 0:
-
 				# log average reward till last episode
 				log_avg_reward = log_running_reward / log_running_episodes
 				log_avg_reward = round(log_avg_reward, 4)
@@ -249,7 +223,6 @@ def train():
 
 			# printing average reward
 			if time_step % print_freq == 0:
-
 				# print average reward till last episode
 				print_avg_reward = print_running_reward / print_running_episodes
 				print_avg_nash_reward = print_nash_running_reward / print_running_episodes
