@@ -7,7 +7,7 @@ import torch
 import numpy as np
 import time
 
-from Nash.model import Nash
+from DH_PPO.model import PPO
 from JunQi.JunQi import JunqiEnv
 import warnings
 warnings.filterwarnings("ignore")
@@ -51,30 +51,20 @@ def test():
 	
 	# 初始化环境
 	env = JunqiEnv()
-	'''
-	state_dim = {
-		'Pri_I': (5, 12, 12),
-		'Pub_oppo': (5, 12, 12),
-		'Move': (5, 12, 25),
-		'phase': (1,),
-		'selected': (5, 12),
-		'steps_since_attack': (1,),
-		'isMoved_I': (25,)
-	}
-	'''
 	state_dim = 4441
-	action_dim = 25 * 60
+	action_id_dim = 25
+	action_to_dim = 60
 	print("testing environment name : JunQi")
 	
 	timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
 
 	print("============================================================================================")
-	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
+	agent = PPO(state_dim, action_id_dim, action_to_dim, lr_actor, lr_critic, 0.99, 4, 0.2)
 
 	directory = "data/"
-	checkpoint_path = directory + "Nash_JunQi_0_4_0.pth"
+	checkpoint_path = directory + "PPO_JunQi_0_4_0.pth"
 	print("loading network from : " + checkpoint_path)
-	nash_agent.load(checkpoint_path)
+	agent.load(checkpoint_path)
 	print("--------------------------------------------------------------------------------------------")
 
 	total_test_episodes = 1
@@ -100,22 +90,19 @@ def test():
 			done = False
 	 
 			for i in range(2):
-				avail_actions = env.get_onehot_available_actions(i)
-				if np.all(avail_actions == 0):
+				avail_id = env._get_selection_mask(i).flatten()
+				if np.all(avail_id == 0):
 					done = True
 					break
-				state = env.extract_state(i)
-				action = nash_agent.select_action(state, i, avail_actions, test=True)
-				reward, done = env.Tstep(i, action)
-				
+				state = env.extract_state(i, 0)
+				action_id, action_to = agent.select_action(i, state, avail_id, env._get_movement_mask)
+				reward, done = env.Tstep(i, action_id, action_to)
 				if done:
 					break
 			
 			if done:
 				break
 
-		# clear buffer
-		nash_agent.buffer.clear()
 	env.close()
 	print(sssp / total_test_episodes)
 

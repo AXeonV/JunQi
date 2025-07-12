@@ -165,35 +165,33 @@ class JunqiEnv:
 		mask[0, 0] = mask[11, 0] = mask[0, 4] = mask[11, 4] = False
 		return mask
 
-	def get_onehot_available_actions(self, player):
-		self.current_player = player
-		return self._get_selection_pos(player).flatten()
-
-	def _get_selection_pos(self, player):
+	def _get_selection_mask(self, player):
 		"""选择阶段掩码生成"""
-		# 25*60动作空间掩码（棋子uid*去向pos）【相对于己方】
-		mask = np.zeros((25, self.rows * self.cols), dtype=np.uint8)
+		mask = np.zeros(25, dtype=np.uint8)
 		for pos, (p, typ, uid) in self.piece_map.items():
 			if p == player and (typ not in [PieceType.MINE, PieceType.FLAG]) and (self.id_to_position[player][uid] not in [(0, 1), (0, 3), (11, 1), (11, 3)]):
-				avails = self._get_movement_pos(player, pos)
-				if avails.__len__() > 0:
-					for it in avails:
-						mask[uid, self.pos_to_index(it)] = 1
+				movable = self._get_movement_mask(player, uid, True)
+				mask[uid] = movable
 		return mask
 
-	def _get_movement_pos(self, player, from_pos):
+	def _get_movement_mask(self, player, uid, test=False):
 		"""移动阶段掩码生成"""
+		from_pos, _ = self._get_piece_info(uid, player)
+		
 		piece_type = self.piece_map[from_pos][1]
-		pos_list = []
-		# from_pos, to_pos 都是棋盘上绝对位置，pos_list中的是相对位置
-  
+		mask = np.zeros((self.rows, self.cols), dtype=np.uint8)
+	
 		if from_pos is None or from_pos not in self.piece_map:
-			return pos_list
-
+			if test:
+				return False
+			return mask
+		
 		# 检查是否在大本营
 		if from_pos in self.flag_positions:
-			return pos_list
-
+			if test:
+				return False
+			return mask
+		
 		# 根据棋子类型选择移动方式
 		reachable = []
 		if piece_type == PieceType.ENGINEER:
@@ -210,20 +208,27 @@ class JunqiEnv:
 
 		# 过滤非法目标
 		for to_pos in reachable:
+			if to_pos == from_pos:
+				continue
 			# 行营保护规则
 			if to_pos in self.base_camps and self.board[to_pos] != 0:
 				continue
 			if (from_pos in [(5, 1), (5, 3)] and to_pos in [(6, 1), (6, 3)]) or (to_pos in [(5, 1), (5, 3)] and from_pos in [(6, 1), (6, 3)]):
 				continue
-			if self.board[to_pos] != 0:
+			if self.board[to_pos] != 0: 
 				if (self.board[from_pos] < 0 and self.board[to_pos] < 0) or (self.board[from_pos] > 0 and self.board[to_pos] > 0):
 					continue
+			if test:
+				return True
 			if player == 0:
-				pos_list.append(to_pos)
-			else:
-				pos_list.append((self.rows - to_pos[0] - 1, self.cols - to_pos[1] - 1))
-
-		return pos_list
+				mask[to_pos] = True
+			else: 
+				mask[(self.rows - to_pos[0] - 1, self.cols - to_pos[1] - 1)] = True
+		
+		if test:
+			return False
+ 
+		return mask
 
 	def _get_road_reachable(self, from_pos):
 		"""公路移动可达位置"""
@@ -447,32 +452,31 @@ class JunqiEnv:
 		self._init_game()
 
 	# Step
-	def Tstep(self, player, action):
-		from_pos, to_pos = self._get_action_info(player, action)
-		return self.step(player, (abs(self.board[from_pos]) - 1, to_pos))
-	def step(self, player, action):
+	def Tstep(self, player, action0, action1):
+		if player == 1:
+			action1 = self.cols * self.rows - 1 - action1
+		return self.step(player, action0, self.index_to_pos(action1))
+	def step(self, player, from_uid, to_pos):
 		"""执行动作并返回(reward, done)"""
-		assert player == self.current_player, "当前玩家不匹配"
-			
-		u, to_pos = action
-		i, j = to_pos
+		assert player == self.current_player, f'当前玩家为{self.current_player}，尝试执行玩家{player}的动作'
+		
 		reward = 0.0
 		done = False
 		self.current_player = player
-		from_pos, piece_type = self._get_piece_info(u, player)
-		
+		from_pos, piece_type = self._get_piece_info(from_uid, player)
+
 		# ========== 执行移动 ==========
 		is_attack = self.board[to_pos] != 0
 		combat_result = None
-		self.is_moved[player][u] = 1
+		self.is_moved[player][from_uid] = 1
 		if is_attack:
 			combat_result = self._resolve_combat(from_pos, to_pos, player)
 			self.last_attack_step = self.step_count
 			reward += self._calculate_combat_reward(combat_result, piece_type)
 			
 		# 更新棋盘状态
-		self._update_board_state(u, from_pos, to_pos, player, piece_type, combat_result)
-		
+		self._update_board_state(from_uid, from_pos, to_pos, player, piece_type, combat_result)
+
 		# ========== 计算战略奖励 ==========
 		reward += self._calculate_strategic_reward(to_pos)
 		# ========== 轮次切换 ==========
@@ -498,16 +502,6 @@ class JunqiEnv:
 		if self.step_count - self.last_attack_step > 14:
 			reward -= 2 * (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2)
 		return reward, done
-
-	def _get_action_info(self, player, action):
-		"""从扁平化的动作空间中提取玩家的动作"""
-		blocks = self.rows * self.cols
-		uid, action1 = action // blocks, action % blocks
-		from_pos, _ = self._get_piece_info(uid, player)
-		if player == 1:
-			action1 = blocks - action1 - 1
-		to_pos = self.index_to_pos(action1)
-		return from_pos, to_pos
 	
 	def _invalidate_cache(self, opponent):
 		"""使对手的概率缓存失效"""
@@ -519,7 +513,7 @@ class JunqiEnv:
 		for pos, (p, typ, uid) in self.piece_map.items():
 			if p == player and uid == u:
 				return pos, typ
-		assert False, f"Player {player} does not have piece with ID {u}"
+		assert False, f"玩家{player}的编号{u}不存在"
 		return None, None
 
 	def _calculate_strategic_reward(self, to_pos):
@@ -734,7 +728,7 @@ class JunqiEnv:
 		return (dx == 1 and dy == 0) or (dx == 0 and dy == 1)
 
 	# Extract data
-	def extract_state(self, player, mx_history=None):
+	def extract_state(self, player, crphase, mx_history=None):
 		self.current_player = player
 		"""优化后的状态提取函数"""
 		# 生成各组件
@@ -743,7 +737,7 @@ class JunqiEnv:
 			'Pub_oppo': self._get_cached_pub_tensor(1 - player),                                       # 12 * 12 * 5
 			'Move': self._get_compressed_move_tensor(mx_history),                                      # 50 * 12 * 5
 			'steps_since_attack': np.array([self.step_count - self.last_attack_step], dtype=np.int16), # 1
-			                                                                                    # total: 4441
+																																													# total: 4441
 		}
 		
 		# 转换为适合PyTorch的格式并缓存
@@ -762,10 +756,10 @@ class JunqiEnv:
 		for pos, (p, typ, _) in self.piece_map.items():
 			if p == player:
 				i, j = pos
-				if player == 0:
-					tensor[i, j, typ.value] = self.pos_to_index((i, j))
-				else:
-					tensor[self.rows - i - 1, self.cols - j - 1, typ.value] = self.pos_to_index((self.rows - i - 1, self.cols - j - 1))
+				if player == 1:
+					i = self.rows - i - 1
+					j = self.cols - j - 1
+				tensor[i, j, typ.value] = self.pos_to_index((i, j))
 		return tensor
 
 	def _get_cached_pub_tensor(self, opponent):

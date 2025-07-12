@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from JunQi.JunQi import JunqiEnv
-from Nash.model import Nash
+from DH_PPO.model import PPO
 
 def train():
 	####### initialize environment hyperparameters ######
@@ -46,19 +46,9 @@ def train():
 	#####################################################
 	# 初始化环境
 	env = JunqiEnv()
-	'''
-	state_dim = {
-		'Pri_I': (5, 12, 12),
-		'Pub_oppo': (5, 12, 12),
-		'Move': (5, 12, 25),
-		'phase': (1,),
-		'selected': (5, 12),
-		'steps_since_attack': (1,),
-		'isMoved_I': (25,)
-	}
-	'''
-	state_dim = 4441       # 状态空间维度
-	action_dim = 25 * 60   # 最大动作空间
+	state_dim = 4441
+	action_id_dim = 25
+	action_to_dim = 60
 	print("training environment name : JunQi")
 	env_name = "JunQi"
 	###################### logging ######################
@@ -78,7 +68,7 @@ def train():
 	run_num = len(current_num_files)
 
 	#### create new log file for each run
-	log_f_name = log_dir + '/Nash_' + env_name + "_log_" + str(run_num) + ".csv"
+	log_f_name = log_dir + '/PPO_' + env_name + "_log_" + str(run_num) + ".csv"
 
 	print("current logging run number for " + env_name + " : ", run_num)
 	print("logging at : " + log_f_name)
@@ -86,10 +76,10 @@ def train():
 
 	################### checkpointing ###################
 	# directory = "data/"
-	# checkpoint_path = directory + "Nash_{}_{}_{}_0.pth".format(env_name, 0, 1)
+	# checkpoint_path = directory + "PPO_{}_{}_{}_0.pth".format(env_name, 0, 1)
 	# print("loading network from : " + checkpoint_path)
 
-	run_num_pretrained = 6      #### change this to prevent overwriting weights in same env_name folder
+	run_num_pretrained = 4      #### change this to prevent overwriting weights in same env_name folder
 
 	directory = "data"
 	if not os.path.exists(directory):
@@ -100,7 +90,7 @@ def train():
 		os.makedirs(directory)
 
 
-	checkpoint_path = directory + "Nash_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+	checkpoint_path = directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
 	print("save checkpoint path : " + checkpoint_path)
 	#####################################################
 
@@ -114,7 +104,8 @@ def train():
 	print("printing average reward over episodes in last : " + str(print_freq) + " timesteps")
 	print("--------------------------------------------------------------------------------------------")
 	print("state space dimension : ", state_dim)
-	print("action space dimension : ", action_dim)
+	print("action_id space dimension : ", action_id_dim)
+	print("action_to space dimension : ", action_to_dim)
 	print("--------------------------------------------------------------------------------------------")
 	if has_continuous_action_space:
 		print("Initializing a continuous action space policy")
@@ -143,15 +134,15 @@ def train():
 
 	################# training procedure ################
 	# 初始化PPO
-	nash_agent = Nash(state_dim, action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
+	agent = PPO(state_dim, action_id_dim, action_to_dim, lr_actor, lr_critic, 0.99, 4, 0.2)
 
 	# loading pretrained model(if needed)
 	load_checkpoint = True
 	if load_checkpoint:
-		load_checkpoint_path = directory + "Nash_JunQi_0_4_0.pth"
+		load_checkpoint_path = directory + "PPO_JunQi_0_2_0.pth"
 		print("loading network from : " + load_checkpoint_path)
 		if os.path.exists(load_checkpoint_path):
-			nash_agent.load(load_checkpoint_path)
+			agent.load(load_checkpoint_path)
 		else:
 			print("checkpoint not found at : " + load_checkpoint_path)
 			exit(0)
@@ -178,30 +169,27 @@ def train():
 	i_episode = 0
 
 	# training loop
-	sete = 0
 	while time_step < max_training_timesteps:
 		env.reset()
 		current_ep_reward = 0
 		current_nash_ep_reward = 0
-		nash_agent.new_buffer()
 		done = False
 		rewards = []
 
 		for t in range(1, max_ep_len+1):
 			for i in range(2):
-				avail_actions = env.get_onehot_available_actions(i)
-				if np.all(avail_actions == 0):
+				avail_id = env._get_selection_mask(i).flatten()
+				if np.all(avail_id == 0):
 					done = True
-					nash_agent.buffer[1 - i].rewards[-1][-1] += 5000
-					nash_agent.buffer[1 - i].is_terminals[-1][-1] = True
 					break
-				sete += 1
-				state = env.extract_state(i)
-				action = nash_agent.select_action(state, i, avail_actions, test=True)
-				reward, done = env.Tstep(i, action)
+				state = env.extract_state(i, 0)
+				action_id, action_to = agent.select_action(i, state, avail_id, env._get_movement_mask)
+				reward, done = env.Tstep(i, action_id, action_to)
+				agent.buffer[i].rewards.append(reward)
+				agent.buffer[i].is_terminals.append(done)
 				rewards.append(reward)
-				nash_agent.buffer[i].rewards[-1].append(reward)
-				nash_agent.buffer[i].is_terminals[-1].append(done)
+				if done:
+					break
     
 			time_step += 1
 			current_ep_reward += np.abs(rewards[0] + rewards[1])
@@ -209,8 +197,8 @@ def train():
 				current_nash_ep_reward = current_nash_ep_reward + rewards[0]
 			else:
 				current_nash_ep_reward = current_nash_ep_reward - rewards[1]
-    
 			if time_step % log_freq == 0:
+
 				# log average reward till last episode
 				log_avg_reward = log_running_reward / log_running_episodes
 				log_avg_reward = round(log_avg_reward, 4)
@@ -223,6 +211,7 @@ def train():
 
 			# printing average reward
 			if time_step % print_freq == 0:
+
 				# print average reward till last episode
 				print_avg_reward = print_running_reward / print_running_episodes
 				print_avg_nash_reward = print_nash_running_reward / print_running_episodes
@@ -241,7 +230,7 @@ def train():
 				if time_step - last_save_model_step > save_model_freq:
 					print("--------------------------------------------------------------------------------------------")
 					print("saving model at : " + checkpoint_path)
-					nash_agent.save(checkpoint_path[:-4] + "_" + str(max_win_ratio) + checkpoint_path[-4:])
+					agent.save(checkpoint_path[:-4] + "_" + str(max_win_ratio) + checkpoint_path[-4:])
 					print("model saved")
 					print("Elapsed Time  : ", datetime.now().replace(microsecond=0) - start_time)
 					print("M: {}".format(m))
@@ -251,14 +240,8 @@ def train():
   
 		# update PPO agent
 		if time_step % update_timestep == 0:
-			if n >= delta_m:
-				n = 0
-				m += 1
-				nash_agent.policy_reg_old.load_state_dict(nash_agent.policy_reg.state_dict())
-				nash_agent.policy_reg.load_state_dict(nash_agent.policy_old.state_dict())
-			alpha = 1 if n > delta_m / 2 else n * 2 / delta_m
-			nash_agent.update(alpha)
-			n += 1
+			agent.update(0)
+			agent.update(1)
 
 		print_running_reward += current_ep_reward
 		print_running_episodes += 1

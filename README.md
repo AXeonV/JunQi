@@ -3,10 +3,8 @@ a self-trained NN for JunQi based on DeepNash
 
 |pth|learning rate|history depth|total timestep|
 |-|-|-|-|
-|Nash_JunQi_0_1_0|0.004|30|2e5|
-|Nash_JunQi_0_2_0|0.004|50|2e5|
-|Nash_JunQi_0_3_0|0.004|30|1e6|
-|Nash_JunQi_0_4_0|0.004|50|1e6|
+|PPO_JunQi_0_2_0|0.004|50|2e5|
+|PPO_JunQi_0_4_0|0.004|50|1e6|
 
 ## setup
 firstly, install the base enviroment:

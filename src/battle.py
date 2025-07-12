@@ -7,7 +7,7 @@ import torch
 import numpy as np
 import time
 
-from Nash.model import Nash
+from DH_PPO.model import PPO
 from JunQi.JunQi import JunqiEnv
 import warnings
 warnings.filterwarnings("ignore")
@@ -63,24 +63,25 @@ def battle():
 	}
 	'''
 	state_dim = [4441, 4441]
-	action_dim = 25 * 60
+	action_id_dim = 25
+	action_to_dim = 60
 	print("testing environment name : JunQi")
 	
 	timestamp = datetime.now().strftime('%Y%m%d.%H%M%S')
 
 	print("============================================================================================")
-	nash_agent = [
-	Nash(state_dim[0], action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True),
-	Nash(state_dim[1], action_dim, lr_actor, lr_critic, has_continuous_action_space, action_std, flatten=True)
+	agent = [
+	PPO(state_dim[0], action_id_dim, action_to_dim, lr_actor, lr_critic, 0.99, 4, 0.2),
+	PPO(state_dim[1], action_id_dim, action_to_dim, lr_actor, lr_critic, 0.99, 4, 0.2)
   ]
 
 	directory = "data/"
-	checkpoint_path0 = directory + "Nash_JunQi_0_6_0.pth"
-	checkpoint_path1 = directory + "Nash_JunQi_0_2_0.pth"
+	checkpoint_path0 = directory + "PPO_JunQi_0_4_0.pth"
+	checkpoint_path1 = directory + "PPO_JunQi_0_2_0.pth"
 	print("loading network0 from : " + checkpoint_path0)
 	print("loading network1 from : " + checkpoint_path1)
-	nash_agent[0].load(checkpoint_path0)
-	nash_agent[1].load(checkpoint_path1)
+	agent[0].load(checkpoint_path0)
+	agent[1].load(checkpoint_path1)
 	print("--------------------------------------------------------------------------------------------")
 
 	mx_history = [50, 50]
@@ -100,15 +101,14 @@ def battle():
 	 
 			for i in range(2):
 				winner = i
-				avail_actions = env.get_onehot_available_actions(i)
-				if np.all(avail_actions == 0):
+				avail_id = env._get_selection_mask(i).flatten()
+				if np.all(avail_id == 0):
 					winner = 1 - i
 					done = True
 					break
-				state = env.extract_state(i, mx_history[i])
-				action = nash_agent[i].select_action(state, i, avail_actions, test=True)
-				reward, done = env.Tstep(i, action)
-				
+				state = env.extract_state(i, 0)
+				action_id, action_to = agent[i].select_action(i, state, avail_id, env._get_movement_mask)
+				reward, done = env.Tstep(i, action_id, action_to)
 				if done:
 					break
 			
@@ -116,9 +116,6 @@ def battle():
 				win[winner] += 1
 				break
 
-		# clear buffer
-		nash_agent[0].buffer.clear()
-		nash_agent[1].buffer.clear()
 	env.close()
 	print(sssp / total_test_episodes)
 	print("N vs P \t\t Win: {}% \t\t Lose: {}%".format(round(win[0] / total_test_episodes * 100, 2), round(win[1] / total_test_episodes * 100, 2)))
