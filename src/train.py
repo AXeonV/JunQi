@@ -14,7 +14,7 @@ def train():
 	has_continuous_action_space = False # continuous action space; else discrete
 
 	max_ep_len = 1000                   # max timesteps in one episode
-	max_training_timesteps = int(1e6)   # break training loop if timeteps > max_training_timesteps
+	max_training_timesteps = int(2e5)   # break training loop if timeteps > max_training_timesteps
 
 	print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
 	log_freq = max_ep_len * 2           # log avg reward in the interval (in num timesteps)
@@ -79,7 +79,7 @@ def train():
 	# checkpoint_path = directory + "PPO_{}_{}_{}_0.pth".format(env_name, 0, 1)
 	# print("loading network from : " + checkpoint_path)
 
-	run_num_pretrained = 4      #### change this to prevent overwriting weights in same env_name folder
+	run_num_pretrained = 2      #### change this to prevent overwriting weights in same env_name folder
 
 	directory = "data"
 	if not os.path.exists(directory):
@@ -137,7 +137,7 @@ def train():
 	agent = PPO(state_dim, action_id_dim, action_to_dim, lr_actor, lr_critic, 0.99, 4, 0.2)
 
 	# loading pretrained model(if needed)
-	load_checkpoint = True
+	load_checkpoint = False
 	if load_checkpoint:
 		load_checkpoint_path = directory + "PPO_JunQi_0_2_0.pth"
 		print("loading network from : " + load_checkpoint_path)
@@ -181,6 +181,10 @@ def train():
 				avail_id = env._get_selection_mask(i).flatten()
 				if np.all(avail_id == 0):
 					done = True
+					agent.buffer[i].rewards[-1] -= 1000
+					agent.buffer[i].is_terminals[-1] = done
+					agent.buffer[1 - i].rewards[-1] += 5000
+					agent.buffer[1 - i].is_terminals[-1] = done
 					break
 				state = env.extract_state(i, 0)
 				action_id, action_to = agent.select_action(i, state, avail_id, env._get_movement_mask)

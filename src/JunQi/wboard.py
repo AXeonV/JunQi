@@ -16,7 +16,7 @@ def calc_pos(row, col, board_h):
 		center = (margin_left + col * dis_w + cell_w // 2, board_h - margin_top - (11 - row) * dis_h - cell_h // 2)
 	return center
 
-def print_state(pieces, pic_idx, timestamp, last_steps=[]):
+def print_state(pieces, pic_idx, timestamp, last_steps=[], silence=True):
 	# 加载背景棋盘图片
 	board_img = cv2.imread('resources/board.jpg')
 	board_w, board_h = board_img.shape[1], board_img.shape[0]
@@ -49,17 +49,16 @@ def print_state(pieces, pic_idx, timestamp, last_steps=[]):
 	# 转回OpenCV显示
 	board_img = cv2.cvtColor(np.array(board_img_pil), cv2.COLOR_RGB2BGR)
 	
-	# 保存图片到 logs/时间戳/board.png
-	save_dir = os.path.join('logs/', timestamp)
-	os.makedirs(save_dir, exist_ok=True)
-	save_path = os.path.join(save_dir, 'board' + str(pic_idx) + '.png')
-	cv2.imwrite(save_path, board_img)
- 
-	# cv2.imshow('Board', board_img)
-	# cv2.waitKey(0)
-	# cv2.destroyAllWindows()
-	
-	
+	# 保存/打印图片
+	if silence:
+		save_dir = os.path.join('logs/', timestamp)
+		os.makedirs(save_dir, exist_ok=True)
+		save_path = os.path.join(save_dir, 'board' + str(pic_idx) + '.png')
+		cv2.imwrite(save_path, board_img)
+	else:
+		cv2.imshow('Board', board_img)
+		cv2.waitKey(0)
+		cv2.destroyAllWindows()
 	
 if __name__ == '__main__':
 	pieces = [

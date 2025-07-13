@@ -103,7 +103,6 @@ def battle():
 				winner = i
 				avail_id = env._get_selection_mask(i).flatten()
 				if np.all(avail_id == 0):
-					winner = 1 - i
 					done = True
 					break
 				state = env.extract_state(i, 0)

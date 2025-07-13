@@ -62,7 +62,7 @@ def test():
 	agent = PPO(state_dim, action_id_dim, action_to_dim, lr_actor, lr_critic, 0.99, 4, 0.2)
 
 	directory = "data/"
-	checkpoint_path = directory + "PPO_JunQi_0_4_0.pth"
+	checkpoint_path = directory + "PPO_JunQi_0_2_0.pth"
 	print("loading network from : " + checkpoint_path)
 	agent.load(checkpoint_path)
 	print("--------------------------------------------------------------------------------------------")

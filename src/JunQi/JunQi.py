@@ -182,9 +182,7 @@ class JunqiEnv:
 		mask = np.zeros((self.rows, self.cols), dtype=np.uint8)
 	
 		if from_pos is None or from_pos not in self.piece_map:
-			if test:
-				return False
-			return mask
+			assert False
 		
 		# 检查是否在大本营
 		if from_pos in self.flag_positions:
@@ -460,37 +458,17 @@ class JunqiEnv:
 		"""执行动作并返回(reward, done)"""
 		assert player == self.current_player, f'当前玩家为{self.current_player}，尝试执行玩家{player}的动作'
 		
+		self.current_player = player
+		self.step_count += 1
+		if self.step_count - self.last_attack_step > 70:
+			return -10000, True
+
+		from_pos, piece_type = self._get_piece_info(from_uid, player)
 		reward = 0.0
 		done = False
-		self.current_player = player
-		from_pos, piece_type = self._get_piece_info(from_uid, player)
-
-		# ========== 执行移动 ==========
 		is_attack = self.board[to_pos] != 0
 		combat_result = None
 		self.is_moved[player][from_uid] = 1
-		if is_attack:
-			combat_result = self._resolve_combat(from_pos, to_pos, player)
-			self.last_attack_step = self.step_count
-			reward += self._calculate_combat_reward(combat_result, piece_type)
-			
-		# 更新棋盘状态
-		self._update_board_state(from_uid, from_pos, to_pos, player, piece_type, combat_result)
-
-		# ========== 计算战略奖励 ==========
-		reward += self._calculate_strategic_reward(to_pos)
-		# ========== 轮次切换 ==========
-		self.current_player = 1 - self.current_player
-		self.step_count += 1
-		
-		# ========== 终局判断 ==========
-		done = self._check_termination(1 - player)
-		if done:
-			reward += 5000
-			return reward, done
-		if is_attack:
-			self._invalidate_cache(0)
-			self._invalidate_cache(1)
 		self.move_history.append({
 			'type': 'attack' if is_attack else 'move',
 			'from': from_pos,
@@ -498,15 +476,21 @@ class JunqiEnv:
 			'player': self.current_player,
 			'step': self.step_count
 		})
+		if is_attack:
+			if self.piece_map[to_pos][1] == PieceType.FLAG:
+				return 10000, True
+			combat_result = self._resolve_combat(from_pos, to_pos, player)
+			self.last_attack_step = self.step_count
+			reward += self._calculate_combat_reward(combat_result, piece_type)
+		self._update_board_state(from_uid, from_pos, to_pos, player, piece_type, combat_result)
+
 		# 消极比赛惩罚
-		if self.step_count - self.last_attack_step > 14:
+		if self.step_count - self.last_attack_step > 2:
 			reward -= 2 * (self.step_count - self.last_attack_step - 2) * (self.step_count - self.last_attack_step - 2)
-		return reward, done
+		# if from_pos in self.base_camps:
+		# 	reward -= 3
 	
-	def _invalidate_cache(self, opponent):
-		"""使对手的概率缓存失效"""
-		self.prob_cache['pub'][opponent] = None
-		self.state_cache = {}
+		return reward, done
 
 	def _get_piece_info(self, u, player):
 		"""根据编号获取棋子信息"""
@@ -514,16 +498,15 @@ class JunqiEnv:
 			if p == player and uid == u:
 				return pos, typ
 		assert False, f"玩家{player}的编号{u}不存在"
-		return None, None
 
 	def _calculate_strategic_reward(self, to_pos):
 		"""战略位置奖励"""
-		add = to_pos[0] - 6
+		add = to_pos[0] - 5
 		if self.current_player == 1:
-			add = 5 - to_pos[0]
+			add = 6 - to_pos[0]
 		if to_pos in self.base_camps:  # 行营控制
-			return 3 + add * 1.3
-		return 0 + add * 1.3
+			return 5 + add * 10
+		return 0 + add * 10
 	
 	def _resolve_combat(self, from_pos, to_pos, attacker_player):
 		"""战斗结果解析"""
@@ -532,10 +515,10 @@ class JunqiEnv:
 		attacker_id = self.piece_map[from_pos][2]
 		defender_id = self.piece_map[to_pos][2]
 
-		if defender_type == PieceType.FLAG:
-			# 攻击军旗
-			self.out_history[attacker_player][attacker_id, defender_id] = 1
-			return {'winner': 'attacker', 'attacker_survive': True}
+		# if defender_type == PieceType.FLAG:
+		# 	# 攻击军旗
+		# 	self.out_history[attacker_player][attacker_id, defender_id] = 1
+		# 	return {'winner': 'attacker', 'attacker_survive': True}
 		
 		# 工兵排雷
 		if attacker_type == PieceType.ENGINEER and defender_type == PieceType.MINE:
@@ -572,37 +555,10 @@ class JunqiEnv:
 		reward = base_rewards.get(result['winner'], 0.0)
 
 		# 重要目标加成
-
 		if attacker_type == PieceType.ENGINEER and result.get('defender_type') == PieceType.MINE:
-			reward += 50.0
+			reward += 50
 			
 		return reward
-
-	def _check_termination(self, player):
-		"""终局条件判断"""
-		# 消极比赛，强制终止
-		if self.step_count - self.last_attack_step > 70:
-			return True
-		
-		# 检查军旗存在
-		flags = False
-		for (p, typ, _) in self.piece_map.values():
-			if typ == PieceType.FLAG and p == player:
-				flags = True
-				break
-		if not flags:
-			return True
-
-		# 检查可移动性
-		movable = any(
-			typ not in [PieceType.MINE, PieceType.FLAG]
-			for (p, typ, _) in self.piece_map.values() if p == player
-		)
-		if not movable:
-			return True
-		return False
-
-		# 还有一些终止情况，在另处判断
 
 	def _update_board_state(self, u, from_pos, to_pos, player, piece_type, combat_result):
 		"""更新游戏状态"""
@@ -849,11 +805,9 @@ class JunqiEnv:
 					outputmatrix[i][j] = ('0', 0)
 				elif self.board[i][j] > 0:
 					typ_index = self.id_to_type[0][typ_index]
-					# print(typ_index)
 					outputmatrix[i][j] = (self.rtype[typ_index], 1)
 				else:
 					typ_index = self.id_to_type[1][typ_index]
-					# print(typ_index)
 					outputmatrix[i][j] = (self.rtype[typ_index], -1)
 		return [outputmatrix, last_steps]
 
